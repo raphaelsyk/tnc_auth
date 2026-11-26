@@ -1,0 +1,3 @@
+SECRET_KEY = '72163rtfugysdhk78t236qyafguwhjksu78q3t4wfgyaukdjshk'
+ALGORITHM = 'HS256'
+TOKEN_VALIDITY_MINUTES = 2

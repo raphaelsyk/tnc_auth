@@ -4,18 +4,14 @@ Minimal FastAPI example for a Tech and Croissant session on authentication (pass
 
 ## Structure
 
-- `main.py` – FastAPI app, mounts the users router under `/api/users`
-- `routers/users.py` – register, login (`/token`), `/me`, get and delete user
-- `auth.py` – password hashing, JWT creation/verification, `CurrentUser` dependency
-- `models.py` / `schemas.py` – SQLAlchemy model and Pydantic schemas
-- `database.py` – SQLite engine and session
-- `config.py` – settings loaded from `.env`
+- `main.py` – FastAPI app with an in-memory user store, JWT creation and validation: register, login (`/token`), `/me`, get and delete user
+- `password_hashing.py` – password hashing and verification
+- `schemas.py` – Pydantic schemas
 
 ## Setup
 
 ```bash
 uv sync
-echo "SECRET_KEY=$(openssl rand -hex 32)" > .env
 uv run fastapi dev main.py
 ```
 

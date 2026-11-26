@@ -3,35 +3,36 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 import jwt
-import pwdlib
 import uvicorn
 from fastapi import Depends, FastAPI, status
 from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
+from config import *
+from password_hashing import hash_password, verify_password
 from schemas import Token, UserCreate, UserDB, UserPrivate, UserPublic
 
-password_hasher = pwdlib.PasswordHash.recommended()
+user_db: dict[str, UserDB] = {
+    'rapha': UserDB.model_validate(
+        {
+            'id': 1,
+            'username': 'rapha',
+            'hashed_password': hash_password('idalab'),
+            'email': 'raphael@idalab.de',
+            'quote': 'Gallia est omnis divisa in partes tres',
+        }
+    ),
+}
 
-SECRET_KEY = '72163rtfugysdhk78t236qyafguwhjksu78q3t4wfgyaukdjshk'
-ALGORITHM = 'HS256'
-TOKEN_VALIDITY_MINUTES = 2
+app = FastAPI()
+
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl='token'
 )  # this is specifying the endpoint to which the frontend needs to submit username and password to get the Bearer token
 
 
-def hash_password(password: str) -> str:
-    """Hash a plain-text password."""
-    return password_hasher.hash(password)
-
-
-def verify_password(password_to_verify: str, ground_truth_password_hash: str) -> bool:
-    """Check a plain-text password against a stored hash."""
-    return password_hasher.verify(password_to_verify, ground_truth_password_hash)
-
-
+## Authentication and JWT Management
 def authenticate_user(username: str, password: str) -> UserDB:
     """Return the user if username and password match, otherwise raise 401."""
     credentials_incorrect_exception = HTTPException(
@@ -77,25 +78,12 @@ def validate_jwt_and_get_current_user(token: Annotated[str, Depends(oauth2_schem
         return user
 
 
-user_db: dict[str, UserDB] = {
-    'rapha': UserDB.model_validate(
-        {
-            'id': 1,
-            'username': 'rapha',
-            'hashed_password': hash_password('idalab'),
-            'email': 'raphael@idalab.de',
-            'quote': 'Gallia est omnis divisa in partes tres',
-        }
-    ),
-}
-
-app = FastAPI()
-
-
+# ENDPOINTS
 @app.post(
     '/user',
     response_model=UserPrivate,
     status_code=status.HTTP_201_CREATED,
+    tags=['user'],
 )
 def create_user(user: UserCreate) -> UserDB:
     """Register a new user."""
@@ -116,7 +104,7 @@ def create_user(user: UserCreate) -> UserDB:
         return new_user
 
 
-@app.get('/users/{username}', response_model=UserPublic)
+@app.get('/users/{username}', response_model=UserPublic, tags=['user'])
 def get_user(username: str) -> UserDB:
     """Show the public profile of a user."""
     if username in user_db.keys():
@@ -126,7 +114,7 @@ def get_user(username: str) -> UserDB:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
 
 
-@app.delete('/users/{username}', status_code=status.HTTP_204_NO_CONTENT)
+@app.delete('/users/{username}', status_code=status.HTTP_204_NO_CONTENT, tags=['user'])
 def delete_user(current_user: Annotated[UserDB, Depends(validate_jwt_and_get_current_user)], username: str) -> None:
     """Delete a user. Users may delete themselves; the admin may delete anyone."""
     if (username != current_user.username) and not current_user.username == 'rapha':
@@ -150,6 +138,7 @@ def login_and_get_token(
     request_form: Annotated[OAuth2PasswordRequestForm, Depends(OAuth2PasswordRequestForm)],
 ) -> Token:
     """Exchange username and password for a bearer token."""
+
     # validate user
     user = authenticate_user(request_form.username, request_form.password)
 
