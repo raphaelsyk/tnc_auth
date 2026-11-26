@@ -70,7 +70,10 @@ def validate_jwt_and_get_current_user(token: Annotated[str, Depends(oauth2_schem
     except jwt.InvalidTokenError:
         raise credentials_exception
     else:
-        user = user_db[payload['sub']]
+        username = payload.get('sub')
+        if username is None or username not in user_db.keys():
+            raise credentials_exception
+        user = user_db[username]
         return user
 
 
@@ -128,6 +131,8 @@ def delete_user(current_user: Annotated[UserDB, Depends(validate_jwt_and_get_cur
     """Delete a user. Users may delete themselves; the admin may delete anyone."""
     if (username != current_user.username) and not current_user.username == 'rapha':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='No permission to delete this user')
+    elif username not in user_db.keys():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
     else:
         user_db.pop(username)
 
