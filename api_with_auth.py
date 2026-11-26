@@ -104,8 +104,22 @@ def create_user(user: UserCreate) -> UserDB:
         return new_user
 
 
-@app.get('/users/{username}', response_model=UserPublic, tags=['user'])
-def get_user(username: str) -> UserDB:
+@app.get(
+    '/list_users',
+    response_model=list[str],
+    tags=['user'],
+)
+def get_users(current_user: Annotated[UserDB, Depends(validate_jwt_and_get_current_user)]) -> list[str]:
+    """List the usernames of all registered users."""
+    return list(user_db.keys())
+
+
+@app.get(
+    '/users/{username}',
+    response_model=UserPublic,
+    tags=['user'],
+)
+def get_user(current_user: Annotated[UserDB, Depends(validate_jwt_and_get_current_user)], username: str) -> UserDB:
     """Show the public profile of a user."""
     if username in user_db.keys():
         user = user_db[username]
